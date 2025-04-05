@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <%- include('../partials/head', { titulo: titulo }) %>
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+  
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>Crear Reserva</h1>
+      <a href="/cliente/buscar-habitaciones" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Volver a la búsqueda
+      </a>
+    </div>
+    
+    <%- include('../partials/mensajes') %>
+    
+    <div class="row">
+      <div class="col-md-8">
+        <div class="card mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Detalles de la Habitación</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4">
+                <img src="https://via.placeholder.com/300x200" class="img-fluid rounded" alt="<%= habitacion.NombreTipo %>">
+              </div>
+              <div class="col-md-8">
+                <h4><%= habitacion.NombreTipo %></h4>
+                <p><%= habitacion.Descripcion || 'Sin descripción' %></p>
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item">Sucursal: <%= habitacion.NombreSucursal %></li>
+                  <li class="list-group-item">Número de Habitación: <%= habitacion.NumeroHabitacion %></li>
+                  <li class="list-group-item">Capacidad: <%= habitacion.Capacidad %> personas</li>
+                  <li class="list-group-item">Precio por noche: L.<%= habitacion.PrecioPorNoche.toFixed(2) %></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card mb-4">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Servicios Adicionales</h5>
+          </div>
+          <div class="card-body">
+            <% if (servicios.length === 0) { %>
+              <p class="text-center">No hay servicios adicionales disponibles para esta sucursal</p>
+            <% } else { %>
+              <div class="row">
+                <% servicios.forEach(servicio => { %>
+                  <div class="col-md-6 mb-3">
+                    <div class="form-check">
+                      <input class="form-check-input servicio-checkbox" type="checkbox" value="<%= servicio.ServicioID %>" id="servicio<%= servicio.ServicioID %>" data-precio="<%= servicio.Precio %>">
+                      <label class="form-check-label" for="servicio<%= servicio.ServicioID %>">
+                        <%= servicio.NombreServicio %> - L.<%= servicio.Precio.toFixed(2) %>
+                      </label>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Resumen de la Reserva</h5>
+          </div>
+          <div class="card-body">
+            <form action="/cliente/crear-reserva" method="POST" id="reservaForm">
+              <input type="hidden" name="habitacionID" value="<%= habitacion.HabitacionID %>">
+              <input type="hidden" name="sucursalID" value="<%= habitacion.SucursalID %>">
+              <input type="hidden" name="fechaInicio" value="<%= fechaInicio %>">
+              <input type="hidden" name="fechaFin" value="<%= fechaFin %>">
+              <input type="hidden" name="horaInicio" value="14:00">
+              <input type="hidden" name="horaFin" value="12:00">
+              <input type="hidden" name="precioTotal" id="precioTotalInput" value="<%= precioTotal %>">
+              
+              <div id="serviciosSeleccionados"></div>
+              
+              <div class="mb-3">
+                <label class="form-label">Fechas de Estadía</label>
+                <p class="form-control-static">
+                  <%= new Date(fechaInicio).toLocaleDateString() %> al <%= new Date(fechaFin).toLocaleDateString() %>
+                </p>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label">Horario</label>
+                <p class="form-control-static">
+                  Check-in: 14:00 hrs<br>
+                  Check-out: 12:00 hrs
+                </p>
+              </div>
+              
+              <hr>
+              
+              <div class="mb-3">
+                <div class="d-flex justify-content-between">
+                  <span>Habitación (<%= numNoches %> noches):</span>
+                  <span>L.<%= precioTotal.toFixed(2) %></span>
+                </div>
+                <div id="serviciosResumen"></div>
+                <hr>
+                <div class="d-flex justify-content-between fw-bold">
+                  <span>Total:</span>
+                  <span id="totalReserva">L.<%= precioTotal.toFixed(2) %></span>
+                </div>
+              </div>
+              
+              <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">Confirmar Reserva</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <%- include('../partials/footer') %>
+  <%- include('../partials/scripts') %>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const servicioCheckboxes = document.querySelectorAll('.servicio-checkbox');
+      const serviciosSeleccionados = document.getElementById('serviciosSeleccionados');
+      const serviciosResumen = document.getElementById('serviciosResumen');
+      const totalReserva = document.getElementById('totalReserva');
+      const precioTotalInput = document.getElementById('precioTotalInput');
+      
+      let precioBase = <%= precioTotal %>;
+      let total = precioBase;
+      
+      // Actualizar el resumen cuando se selecciona un servicio
+      servicioCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          actualizarServicios();
+        });
+      });
+      
+      function actualizarServicios() {
+        // Limpiar servicios seleccionados
+        serviciosSeleccionados.innerHTML = '';
+        serviciosResumen.innerHTML = '';
+        
+        // Reiniciar total
+        total = precioBase;
+        
+        // Agregar servicios seleccionados
+        servicioCheckboxes.forEach(checkbox => {
+          if (checkbox.checked) {
+            const servicioID = checkbox.value;
+            const servicioPrecio = parseFloat(checkbox.dataset.precio);
+            const servicioNombre = checkbox.nextElementSibling.textContent.split(' - ')[0];
+            
+            // Agregar input oculto para enviar al servidor
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'servicios[]';
+            input.value = servicioID;
+            serviciosSeleccionados.appendChild(input);
+            
+            // Agregar al resumen
+            const div = document.createElement('div');
+            div.className = 'd-flex justify-content-between';
+            div.innerHTML = `<span>${servicioNombre}:</span><span>L.${servicioPrecio.toFixed(2)}</span>`;
+            serviciosResumen.appendChild(div);
+            
+            // Sumar al total
+            total += servicioPrecio;
+          }
+        });
+        
+        // Actualizar total
+        totalReserva.textContent = `L.${total.toFixed(2)}`;
+        precioTotalInput.value = total;
+      }
+    });
+  </script>
+</body>
+</html>
+
